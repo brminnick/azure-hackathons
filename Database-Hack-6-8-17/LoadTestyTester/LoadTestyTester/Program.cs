@@ -1,10 +1,15 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Net.Http.Headers;
 using System.Collections.Generic;
+
+using Newtonsoft.Json;
+
+using Shared;
 
 namespace LoadTestyTester
 {
@@ -13,6 +18,7 @@ namespace LoadTestyTester
         static readonly string _urlToRuin = "https://elasticdatabasehackfunction.azurewebsites.net/api/TakeIt?code=fZrAB5N4ReXsYYjQa3JyPLJgQq7do34F9Mi0wusQ13CUc3V4KuXH5g==";
         static readonly Stopwatch _watch = new Stopwatch();
         static readonly HttpClient _client = CreateHttpClient();
+        static readonly JsonSerializer _serializer = new JsonSerializer();
 
         static void Main(string[] args)
         {
@@ -35,19 +41,39 @@ namespace LoadTestyTester
 
         public static async Task RunData()
         {
-            List<Task<string>> tasks = new List<Task<string>>();
+            List<Task<UserProfile>> tasks = new List<Task<UserProfile>>();
             for (var x = 0; x < 10000; x++)
                 tasks.Add(CallHttp());
 
             await Task.WhenAll(tasks);
         }
-        
-        static public async Task<string> CallHttp()
-        {
-            string astr = await _client.GetStringAsync(_urlToRuin);
-            WriteTime();
 
-            return astr;
+        public static async Task<UserProfile> CallHttp()
+        {
+            var user = await GetDataObjectFromAPI<UserProfile>(_urlToRuin);
+            Console.WriteLine($"First Name: {user.FirstName}");
+
+            return user;
+        }
+
+        static async Task<T> GetDataObjectFromAPI<T>(string apiUrl)
+        {
+            try
+            {
+                using (var stream = await _client.GetStreamAsync(apiUrl).ConfigureAwait(false))
+                using (var reader = new StreamReader(stream))
+                using (var json = new JsonTextReader(reader))
+                {
+                    if (json == null)
+                        return default(T);
+
+                    return await Task.Run(() => _serializer.Deserialize<T>(json)).ConfigureAwait(false);
+                }
+            }
+            catch (Exception e)
+            {
+                return default(T);
+            }
         }
 
         static void WriteTime()
