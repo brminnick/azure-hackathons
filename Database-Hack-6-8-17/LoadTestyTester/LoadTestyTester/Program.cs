@@ -1,22 +1,24 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Net.Http.Headers;
+using System.Collections.Generic;
 
 namespace LoadTestyTester
 {
     class ApiLoader
     {
-        static readonly string urlToRuin = "https://elasticdatabasehackfunction.azurewebsites.net/api/TakeIt?code=fZrAB5N4ReXsYYjQa3JyPLJgQq7do34F9Mi0wusQ13CUc3V4KuXH5g==";
-        static Stopwatch watch = new Stopwatch();
-        static HttpClient client = new HttpClient();
+        static readonly string _urlToRuin = "https://elasticdatabasehackfunction.azurewebsites.net/api/TakeIt?code=fZrAB5N4ReXsYYjQa3JyPLJgQq7do34F9Mi0wusQ13CUc3V4KuXH5g==";
+        static readonly Stopwatch _watch = new Stopwatch();
+        static readonly HttpClient _client = CreateHttpClient();
+
         static void Main(string[] args)
         {
             try
             {
-                watch.Start();
+                _watch.Start();
 
                 Task.Run(() => RunData()).Wait();
             }
@@ -25,8 +27,8 @@ namespace LoadTestyTester
                 Console.WriteLine("Exception: " + ex.Message);
             }
 
-            watch.Stop();
-            writeTime();
+            _watch.Stop();
+            WriteTime();
 
             Console.ReadLine();
         }
@@ -35,26 +37,38 @@ namespace LoadTestyTester
         {
             List<Task<string>> tasks = new List<Task<string>>();
             for (var x = 0; x < 10000; x++)
-                tasks.Add(callHttp());
+                tasks.Add(CallHttp());
 
             await Task.WhenAll(tasks);
         }
         
-        static public async Task<string> callHttp()
+        static public async Task<string> CallHttp()
         {
-            string astr = await client.GetStringAsync(urlToRuin);
-            writeTime();
+            string astr = await _client.GetStringAsync(_urlToRuin);
+            WriteTime();
 
             return astr;
         }
 
-        static void writeTime()
+        static void WriteTime()
         {
-            TimeSpan ts = watch.Elapsed;
+            TimeSpan ts = _watch.Elapsed;
             string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
                 ts.Hours, ts.Minutes, ts.Seconds,
                 ts.Milliseconds / 10);
             Console.WriteLine("RunTime " + elapsedTime);
         }
+
+		static HttpClient CreateHttpClient()
+		{
+			var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip })
+			{
+				Timeout = TimeSpan.FromSeconds(60)
+			};
+
+			client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+
+			return client;
+		}
     }
 }
