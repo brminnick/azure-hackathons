@@ -34,25 +34,28 @@ namespace AbuseFunction
             //return req.CreateResponse<UserProfile>(result);
 
             //We will use the ConnectionStrings for all Azure SQL and Azure PostgreSql
-            var str = ConfigurationManager.ConnectionStrings["{Your connection string from portal}"].ConnectionString;
-            using (SqlConnection centroConnection = new SqlConnection(str))
+            var sqlConnectionString = ConfigurationManager.ConnectionStrings["sql_connection"].ConnectionString;
+            using (SqlConnection sqlConnection = new SqlConnection(sqlConnectionString))
             {
-                await centroConnection.OpenAsync();
-                DbContext dbContext = new DbContext(centroConnection);
+                await sqlConnection.OpenAsync();
+                DbContext dbContext = new DbContext(sqlConnection);
 
                 try
                 {
-                    UserProfile profile = dbContext.UserProfiles.Where(p => p.Email == "{Entered Email}").FirstOrDefault();
-                    return req.CreateResponse<UserProfile>(profile);
+                    var profile = dbContext.GetTable<UserProfile>().FirstOrDefault();
+                    log.Info($"Got Name: {profile?.FirstName}");
 
+                    return req.CreateResponse(profile);
                 }
                 catch (Exception e)
                 {
-
+                    log.Info("**********");
+                    log.Info(e.Message);
+                    log.Info(e.ToString());
+                    log.Info("**********");
+                    return req.CreateResponse(HttpStatusCode.InternalServerError, "User not found and something happened");
                 }
             }
-
-            return req.CreateResponse(HttpStatusCode.InternalServerError, "User not found and something happened");
         }
     }
 }

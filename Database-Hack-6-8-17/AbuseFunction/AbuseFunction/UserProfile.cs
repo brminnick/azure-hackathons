@@ -19,7 +19,7 @@ namespace AbuseFunction
         [Column(Name = "LastName", CanBeNull = false, UpdateCheck = UpdateCheck.Never)]
         public string LastName { get; set; }
         [Column(Name = "Birthdate", CanBeNull = false, UpdateCheck = UpdateCheck.Never)]
-        public DateTime Birthdate { get; set; }
+        public DateTimeOffset Birthdate { get; set; }
         [Column(Name = "Gender", CanBeNull = false, UpdateCheck = UpdateCheck.Never)]
         public string Gender { get; set; }
         [Column(Name = "PhoneNumber", CanBeNull = false, UpdateCheck = UpdateCheck.Never)]
