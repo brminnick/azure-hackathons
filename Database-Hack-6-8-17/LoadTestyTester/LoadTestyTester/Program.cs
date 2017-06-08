@@ -15,7 +15,8 @@ namespace LoadTestyTester
 {
     class ApiLoader
     {
-        static readonly string _urlToRuin = "https://elasticdatabasehackfunction.azurewebsites.net/api/TakeIt?code=fZrAB5N4ReXsYYjQa3JyPLJgQq7do34F9Mi0wusQ13CUc3V4KuXH5g==";
+        const int _numberOfAPIRequests = 10000;
+        const string _urlToRuin = "https://elasticdatabasehackfunction.azurewebsites.net/api/TakeIt?code=fZrAB5N4ReXsYYjQa3JyPLJgQq7do34F9Mi0wusQ13CUc3V4KuXH5g==";
         static readonly Stopwatch _watch = new Stopwatch();
         static readonly HttpClient _client = CreateHttpClient();
         static readonly JsonSerializer _serializer = new JsonSerializer();
@@ -42,22 +43,23 @@ namespace LoadTestyTester
         public static async Task RunData()
         {
             List<Task<UserProfile>> tasks = new List<Task<UserProfile>>();
-            for (var x = 0; x < 10000; x++)
-                tasks.Add(CallHttp());
+            for (var x = 0; x < _numberOfAPIRequests; x++)
+                tasks.Add(GetDataObjectFromAPI<UserProfile>(_urlToRuin, x));
 
             await Task.WhenAll(tasks);
+
+            WriteTime();
+            Console.WriteLine($"All {_numberOfAPIRequests} Downloads Complete");
         }
 
-        public static async Task<UserProfile> CallHttp()
+        static async Task<T> GetDataObjectFromAPI<T>(string apiUrl, int downloadNumber)
         {
-            var user = await GetDataObjectFromAPI<UserProfile>(_urlToRuin);
-            Console.WriteLine($"First Name: {user.FirstName}");
+            Console.WriteLine($"Download {downloadNumber} Started");
+            WriteTime();
 
-            return user;
-        }
+            var downloadStopWatch = new Stopwatch();
+            downloadStopWatch.Start();
 
-        static async Task<T> GetDataObjectFromAPI<T>(string apiUrl)
-        {
             try
             {
                 using (var stream = await _client.GetStreamAsync(apiUrl).ConfigureAwait(false))
@@ -66,6 +68,15 @@ namespace LoadTestyTester
                 {
                     if (json == null)
                         return default(T);
+
+                    downloadStopWatch.Stop();
+                    var downloadTime = String.Format("{0:00}:{1:00}:{2:00}.{3:00}",
+                downloadStopWatch.Elapsed.Hours, downloadStopWatch.Elapsed.Minutes, downloadStopWatch.Elapsed.Seconds,
+                downloadStopWatch.Elapsed.Milliseconds / 10);
+
+                    Console.WriteLine($"Download {downloadNumber} Completed in {downloadTime}");
+                    WriteTime();
+                    Console.WriteLine();
 
                     return await Task.Run(() => _serializer.Deserialize<T>(json)).ConfigureAwait(false);
                 }
@@ -87,14 +98,14 @@ namespace LoadTestyTester
 
 		static HttpClient CreateHttpClient()
 		{
-			var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip })
-			{
-				Timeout = TimeSpan.FromSeconds(60)
+            var client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip })
+            {
+                Timeout = TimeSpan.FromSeconds(6000)
 			};
 
-			client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
+            client.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("gzip"));
 
-			return client;
+            return client;
 		}
     }
 }
